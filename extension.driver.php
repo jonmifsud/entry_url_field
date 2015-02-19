@@ -19,6 +19,19 @@
 					Symphony::Database()->update(array('label' => $field['anchor_label']), $entries_table);
 				}
 			}
+			if( version_compare($prev_version, '2.0', '<') ){
+				Symphony::Database()->query("ALTER TABLE `tbl_fields_entry_url` ADD COLUMN `datasources` VARCHAR(255) DEFAULT NULL");
+				Symphony::Database()->query("ALTER TABLE `tbl_fields_entry_url` ADD COLUMN `handle_source` VARCHAR(255) DEFAULT NULL");
+				Symphony::Database()->query("ALTER TABLE `tbl_fields_entry_url` ADD COLUMN `handle_length` TINYINT(3) UNSIGNED DEFAULT 255");
+
+				$fields = Symphony::Database()->fetch("SELECT `field_id` FROM `tbl_fields_entry_url`");
+
+				foreach( $fields as $field ){
+					$entries_table = 'tbl_entries_data_'.$field["field_id"];
+
+					Symphony::Database()->query("ALTER TABLE `{$entries_table}` ADD COLUMN `handle` VARCHAR(255) DEFAULT NULL");
+				}
+			}
 
 			return true;
 		}
@@ -30,7 +43,10 @@
 					`field_id` INT(11) UNSIGNED NOT NULL,
 					`anchor_label` VARCHAR(255) DEFAULT NULL,
 					`expression` VARCHAR(255) DEFAULT NULL,
+					`datasources` VARCHAR(255) DEFAULT NULL,
 					`new_window` ENUM('yes', 'no') DEFAULT 'no',
+					`handle_source` VARCHAR(255) DEFAULT NULL,
+					`handle_length` TINYINT(3) UNSIGNED DEFAULT 255,
 					`hide` ENUM('yes', 'no') DEFAULT 'no',
 					PRIMARY KEY (`id`),
 					KEY `field_id` (`field_id`)
@@ -56,7 +72,12 @@
 					'page'		=> '/frontend/',
 					'delegate'	=> 'EventPostSaveFilter',
 					'callback'	=> 'compileFrontendFields'
-				)
+				),
+				array(
+					'page' => '/backend/',
+					'delegate' => 'InitialiseAdminPageHead',
+					'callback' => 'initializeAdmin',
+				),
 			);
 		}
 		
@@ -64,7 +85,7 @@
 		Utilities:
 	-------------------------------------------------------------------------*/
 		
-		public function getXPath($entry) {
+		public function getDom($entry,$datasources = array()) {
 			$entry_xml = new XMLElement('entry');
 			$data = $entry->getData();
 			
@@ -89,11 +110,40 @@
 			
 			$xml = new XMLElement('data');
 			$xml->appendChild($entry_xml);
+
+			//generate parameters such as root and add into dom
+			$date = new DateTime();
+			$params = array(
+	            'today' => $date->format('Y-m-d'),
+	            'current-time' => $date->format('H:i'),
+	            'this-year' => $date->format('Y'),
+	            'this-month' => $date->format('m'),
+	            'this-day' => $date->format('d'),
+	            'timezone' => $date->format('P'),
+	            'website-name' => Symphony::Configuration()->get('sitename', 'general'),
+	            'root' => URL,
+	            'workspace' => URL . '/workspace',
+	            'http-host' => HTTP_HOST
+	        );
+
+			foreach ($datasources as $dsName) {
+				$ds = DatasourceManager::create($dsName, $params);
+				$arr = array();
+				$dsXml = $ds->execute($arr); 
+				$xml->appendChild($dsXml);
+			}
+
+			//in case there are url params they will also be added in the xml
+	        $paramsXML = new XMLElement('params');
+	        foreach ($params as $key => $value) {
+	        	$paramsXML->appendChild(new XMLElement($key,$value));
+	        }
+			$xml->appendChild($paramsXML);
 			
 			$dom = new DOMDocument();
 			$dom->loadXML($xml->generate(true));
 			
-			return new DOMXPath($dom);
+			return $dom;
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -114,5 +164,23 @@
 			foreach (self::$fields as $field) {
 				$field->compile($context['entry']);
 			}
+		}
+
+	
+		/**
+		 * Some admin customisations
+		 */
+		public function initializeAdmin($context) {
+			$LOAD_NUMBER = 93593559;
+
+			$page = Administration::instance()->Page;
+			$assets_path = URL . '/extensions/entry_url_field/assets';
+					
+			// Only load on /publish/.../new/ OR /publish/.../edit/
+			if (in_array($page->_context['page'], array('new', 'edit'))) {
+				$page->addScriptToHead($assets_path . '/js/publish.js', $LOAD_NUMBER++);
+				$page->addStylesheetToHead('http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css');
+			}
+			
 		}
 	}

@@ -26,11 +26,97 @@
 					`entry_id` INT(11) UNSIGNED NOT NULL,
 					`label` TEXT DEFAULT NULL,
 					`value` TEXT DEFAULT NULL,
+					`handle` VARCHAR(255) DEFAULT NULL,
 					PRIMARY KEY (`id`),
 					KEY `entry_id` (`entry_id`)
 				)
 			");
 		}
+
+    /*-------------------------------------------------------------------------
+        Definition:
+    -------------------------------------------------------------------------*/
+
+	    public function canFilter()
+	    {
+	        if ( $this->get('handle_source') != "" ){
+	        	return true;
+	        } else return false;
+	    }
+
+    /*-------------------------------------------------------------------------
+        Filtering:
+    -------------------------------------------------------------------------*/
+
+	    public function fetchFilterableOperators() {
+	        return array(
+	            array(
+	                'title' => 'handle is',
+	                'filter' => ' ',
+	                'help' => __('Find values that are an exact match for the given string.')
+	            ),
+	            array(
+	                'title' => 'handle contains',
+	                'filter' => 'regexp: ',
+	                'help' => __('Find values that match the given <a href="%s">MySQL regular expressions</a>.', array(
+	                    'http://dev.mysql.com/doc/mysql/en/Regexp.html'
+	                ))
+	            ),
+	            array(
+	                'title' => 'handle does not contain',
+	                'filter' => 'not-regexp: ',
+	                'help' => __('Find values that do not match the given <a href="%s">MySQL regular expressions</a>.', array(
+	                    'http://dev.mysql.com/doc/mysql/en/Regexp.html'
+	                ))
+	            ),
+	        );
+	    }
+
+	    public function buildDSRetrievalSQL($data, &$joins, &$where, $andOperation = false) {
+	        $field_id = $this->get('id');
+
+	        if (self::isFilterRegex($data[0])) {
+	            $this->buildRegexSQL($data[0], array('value', 'handle'), $joins, $where);
+	        } else if ($andOperation) {
+	            foreach ($data as $value) {
+	                $this->_key++;
+	                $value = $this->cleanValue($value);
+	                $joins .= "
+	                    LEFT JOIN
+	                        `tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
+	                        ON (e.id = t{$field_id}_{$this->_key}.entry_id)
+	                ";
+	                $where .= "
+	                    AND (
+	                        t{$field_id}_{$this->_key}.handle = '{$value}'
+	                    )
+	                ";
+	            }
+	        } else {
+	            if (!is_array($data)) {
+	                $data = array($data);
+	            }
+
+	            foreach ($data as &$value) {
+	                $value = $this->cleanValue($value);
+	            }
+
+	            $this->_key++;
+	            $data = implode("', '", $data);
+	            $joins .= "
+	                LEFT JOIN
+	                    `tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key}
+	                    ON (e.id = t{$field_id}_{$this->_key}.entry_id)
+	            ";
+	            $where .= "
+	                AND (
+	                    t{$field_id}_{$this->_key}.handle IN ('{$data}')
+	                )
+	            ";
+	        }
+
+	        return true;
+	    }
 		
 	/*-------------------------------------------------------------------------
 		Settings:
@@ -53,8 +139,41 @@
 				"fields[{$order}][expression]",
 				$this->get('expression')
 			));			
-			$help = new XMLElement('p', __('To access the other fields, use XPath: <code>{entry/field-one} static text {entry/field-two}</code>.'));
+			$help = new XMLElement('p', __('To access the other fields, use XPath: <code>{entry/field-one} static text {entry/field-two}</code>. You can also link to an XSLT file within your workspace folder.'));
 			$help->setAttribute('class', 'help');
+			$label->appendChild($help);
+			$wrapper->appendChild($label);
+			
+			$label = Widget::Label(__('Handle Source (optional field handle)'));
+			$label->appendChild(Widget::Input(
+				"fields[{$order}][handle_source]",
+				$this->get('handle_source')
+			));			
+			$wrapper->appendChild($label);
+
+			$label = Widget::Label(__('Handle Length (max 255)'));
+			$label->appendChild(Widget::Input(
+				"fields[{$order}][handle_length]",
+				$this->get('handle_length')
+			));			
+			$wrapper->appendChild($label);
+
+			$selectedDatasources = explode(',',$this->get('datasources'));
+			$datasources = DatasourceManager::listAll();
+			$options = array();
+			foreach ($datasources as $handle => $datasource) {
+				$selected = in_array($handle,$selectedDatasources);
+				$options[] = array($handle, $selected, $datasource['name']);
+			}
+			$label = Widget::Label(__('Datasources to include for processing'));
+			$label->appendChild(Widget::Select(
+				"fields[{$order}][datasources]",
+				$options,
+				array('multiple'=>'multiple')
+			));			
+			$help = new XMLElement('p', __('Add datasources to allow you to build links which depend on other sections.'));
+			$help->setAttribute('class', 'help');
+			$label->appendChild($help);
 			$wrapper->appendChild($label);
 			
 			$label = Widget::Label();
@@ -85,6 +204,9 @@
 				'field_id'			=> $id,
 				'anchor_label'		=> $this->get('anchor_label'),
 				'expression'		=> $this->get('expression'),
+				'datasources'		=> $this->get('datasources'),
+				'handle_source'		=> $this->get('handle_source'),
+				'handle_length'		=> $this->get('handle_length'),
 				'new_window'		=> $this->get('new_window'),
 				'hide'				=> $this->get('hide')
 			);
@@ -96,11 +218,57 @@
 	/*-------------------------------------------------------------------------
 		Publish:
 	-------------------------------------------------------------------------*/
+
+
+		private function strbefore($string, $substring) {
+			$pos = strpos($string, $substring);
+			if ($pos === false)
+				return $string;
+			else 
+				return(substr($string, 0, $pos));
+		}
+
+		private function strafter($string, $substring) {
+			$pos = strpos($string, $substring);
+			if ($pos === false)
+				return $string;
+			else 
+				return(substr($string, $pos+strlen($substring)));
+		}
 		
 		public function displayPublishPanel(XMLElement &$wrapper, $data = null, $flagWithError = null, $fieldnamePrefix = null, $fieldnamePostfix = null, $entry_id = null) {
 			$label = Widget::Label($this->get('label'));
 			$span = new XMLElement('span', null, array('class' => 'frame'));
 			
+			if ( $this->get('handle_source') != "" ){
+
+				$handle = $data['handle'];
+
+				if (!empty($handle)){
+
+					$url = $this->formatURL((string)$data['value']);
+
+					// get part before
+					$urlContents = $this->strbefore($url, $handle);
+
+					// show handle in editable field
+					$urlContents .= "<span contentEditable='true' class='url-entry-handle' data-source='{$this->get('handle_source')}' data-length='{$this->get('handle_length')}'>{$handle}</span>";
+
+					// show whatever is after
+					$urlContents .= $this->strafter($url, $handle);
+
+					$fullEntryUrl = new XMLElement('span', $urlContents, array('class' => 'full-entry-url'));
+					$span->appendChild($fullEntryUrl);
+				} else {
+					$fullEntryUrl = new XMLElement('span', "<span contentEditable='true' class='url-entry-handle empty' data-source='{$this->get('handle_source')}' data-length='{$this->get('handle_length')}'></span>", array('class' => 'full-entry-url'));
+					$span->appendChild($fullEntryUrl);
+				}
+
+				// var_dump($this->get('handle_source'));die;
+				$handleInput = Widget::Input('fields'.$prefix.'['.$this->get('element_name').'][handle]'.$postfix, $handle, 'hidden');
+				$span->appendChild($handleInput);
+			}
+
 			$anchor = Widget::Anchor(
 				(string)$data['label'],
 				is_null($data['value']) ? '#' : $this->formatURL((string)$data['value'])
@@ -135,8 +303,14 @@
 		
 		public function processRawFieldData($data, &$status, &$message = null, $simulate = false, $entry_id = null) {
 			$status = self::__OK__;
+
+			$result =  array('label' => null, 'value' => null);
+
+			if ($data['handle']){
+				$result['handle'] = General::createHandle($data['handle'],$this->get('handle_length'));
+			}
 			
-			return array('label' => null, 'value' => null);
+			return $result;
 		}
 		
 	/*-------------------------------------------------------------------------
@@ -145,10 +319,17 @@
 		
 		public function appendFormattedElement(XMLElement &$wrapper, $data, $encode = false, $mode = null, $entry_id = null) {
 			if (!self::$ready) return;
-			
+
+			//handle might still be required to generate the full url
 			$element = new XMLElement($this->get('element_name'));
-			$element->setAttribute('label', General::sanitize($data['label']));
-			$element->setValue(General::sanitize($data['value']));
+			$element->setAttribute('handle', General::sanitize($data['handle']));
+
+			if (self::$ready){
+				//only show the full value if it is ready
+				$element->setAttribute('label', General::sanitize($data['label']));
+				$element->setValue(General::sanitize($data['value']));
+			}
+			
 			$wrapper->appendChild($element);
 		}
 		
@@ -166,6 +347,14 @@
 			// deal with Sym in subdirectories
 			return URL . $url;
 		}
+
+		public function getParameterPoolValue(array $data, $entry_id=NULL) {
+			if ($this->get('handle_source') == '') {
+				return $data['value'];
+			}
+
+			return $data['handle'];
+		}
 		
 	/*-------------------------------------------------------------------------
 		Compile:
@@ -173,13 +362,16 @@
 		
 		public function compile($entry) {
 			self::$ready = false;
+
+			//Fetch any dependent datasources. These can be used to build the urls in xpath
+			$datasources = explode(',',$this->get('datasources'));
 			
-			$xpath = $this->_driver->getXPath($entry);
+			$dom = $this->_driver->getDom($entry,$datasources);
 			
 			self::$ready = true;
 			
-			$value = $this->getExpression($xpath, 'expression');
-			$label = $this->getExpression($xpath, 'anchor_label');
+			$value = $this->getExpression($dom, 'expression');
+			$label = $this->getExpression($dom, 'anchor_label');
 
 			// Save:
 			Symphony::Database()->update(
@@ -193,32 +385,47 @@
 		}
 
 
-		private function getExpression($xpath, $handle){
+		private function getExpression($dom, $handle){
 			$expression = $this->get($handle);
 			$replacements = array();
 
-			// Find queries:
-			preg_match_all('/\{[^\}]+\}/', $expression, $matches);
+			if(substr($expression, -4) === ".xsl"){
+				// If expression is an XSL file should use xsl templates 
+				$xsl = new DOMDocument;
+				// $xsl->load(WORKSPACE.'/sections/pages.xsl');
+				$xsl->load(WORKSPACE.$expression);
 
-			// Find replacements:
-			foreach ($matches[0] as $match) {
-				$results = @$xpath->query(trim($match, '{}'));
+				$proc = new XSLTProcessor;
+				$proc->importStyleSheet($xsl);
 
-				if ($results->length) {
-					$replacements[$match] = $results->item(0)->nodeValue;
-				} else {
-					$replacements[$match] = '';
+				return trim(substr($proc->transformToXML($dom), strlen('<?xml version="1.0"?>')));
+			} else {
+				$xpath = new DOMXPath($dom);
+
+				// Find queries:
+				preg_match_all('/\{[^\}]+\}/', $expression, $matches);
+
+				// Find replacements:
+				foreach ($matches[0] as $match) {
+					$results = @$xpath->query(trim($match, '{}'));
+
+					if ($results->length) {
+						$replacements[$match] = $results->item(0)->nodeValue;
+					} else {
+						$replacements[$match] = '';
+					}
 				}
+
+				// Apply replacements:
+				$value = str_replace(
+					array_keys($replacements),
+					array_values($replacements),
+					$expression
+				);
+
+				return $value;
+
 			}
-
-			// Apply replacements:
-			$value = str_replace(
-				array_keys($replacements),
-				array_values($replacements),
-				$expression
-			);
-
-			return $value;
 		}
 		
 	}
