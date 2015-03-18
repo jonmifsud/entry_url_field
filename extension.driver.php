@@ -74,6 +74,11 @@
 					'callback'	=> 'compileFrontendFields'
 				),
 				array(
+					'page' => '/xmlimporter/importers/run/',
+					'delegate' => 'XMLImporterEntryPostEdit',
+					'callback' => 'compileImportFields',
+				),
+				array(
 					'page' => '/backend/',
 					'delegate' => 'InitialiseAdminPageHead',
 					'callback' => 'initializeAdmin',
@@ -161,6 +166,12 @@
 		}
 		
 		public function compileFrontendFields($context) {
+			foreach (self::$fields as $field) {
+				$field->compile($context['entry']);
+			}
+		}
+		
+		public function compileImportFields($context) {
 			foreach (self::$fields as $field) {
 				$field->compile($context['entry']);
 			}

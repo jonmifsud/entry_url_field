@@ -29,6 +29,7 @@
 		<release version="2.0" date="2018-06-01" min="2.5.x"><![CDATA[
 			* Added support for Datasources and XSLT to generate urls
 			* Added support for handle overrides
+			* Added support for xml importer
 		]]>
 		<release version="1.3.2" date="2018-01-05" min="2.3.x" max="2.x.x"><![CDATA[
 			* Compatibility with PHP 7

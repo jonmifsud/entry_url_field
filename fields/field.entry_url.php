@@ -314,6 +314,31 @@
 		}
 		
 	/*-------------------------------------------------------------------------
+		Import:
+	-------------------------------------------------------------------------*/
+
+		public function getImportModes(){
+			//only support array data
+			return array(
+				'getPostdata' =>	ImportableField::ARRAY_VALUE,
+				'handle' =>	ImportableField::STRING_VALUE
+			);
+		}
+
+		public function prepareImportValue($data, $mode, $entry_id = null){
+
+			if ($mode == $this->getImportModes()['handle']){
+				
+				return array('handle'=>$data);
+				
+			} else {
+				$result = $data;
+			}
+
+			return $result;
+		}
+		
+	/*-------------------------------------------------------------------------
 		Output:
 	-------------------------------------------------------------------------*/
 		
