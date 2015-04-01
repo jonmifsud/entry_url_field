@@ -75,6 +75,11 @@
 				),
 				array(
 					'page' => '/xmlimporter/importers/run/',
+					'delegate' => 'XMLImporterEntryPostCreate',
+					'callback' => 'compileImportFields',
+				),
+				array(
+					'page' => '/xmlimporter/importers/run/',
 					'delegate' => 'XMLImporterEntryPostEdit',
 					'callback' => 'compileImportFields',
 				),

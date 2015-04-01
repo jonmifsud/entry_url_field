@@ -25,6 +25,10 @@
 		<item type="image" url="http://symphonyextensions.com/nickdunn/entry_url_field/media/entry_url_field.png">Entry URL Field: Add a hyperlink in the backend to view an entry URL in the frontend</item>
 	</media>
 	<releases>
+		<release version="2.1.1" date="2015-04-01" min="2.5.x"><![CDATA[
+			* Add delegate for XML Importer Post Create
+		]]>
+		</release>
 		<release version="2.1" date="2015-03-18" min="2.5.x"><![CDATA[
 			* Added support for xml importer
 		]]>
