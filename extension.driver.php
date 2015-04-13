@@ -95,7 +95,7 @@
 		Utilities:
 	-------------------------------------------------------------------------*/
 		
-		public function getDom($entry,$datasources = array()) {
+		public function getDom($entry,$datasources = array(),$entry_url_field_id) {
 			$entry_xml = new XMLElement('entry');
 			$data = $entry->getData();
 			
@@ -117,6 +117,8 @@
 				$field = FieldManager::fetch($field_id);
 				$field->appendFormattedElement($entry_xml, $values, false);
 			}
+
+			FieldManager::fetch($entry_url_field_id)->setReady(true);
 			
 			$xml = new XMLElement('data');
 			$xml->appendChild($entry_xml);
