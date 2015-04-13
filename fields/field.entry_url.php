@@ -384,6 +384,10 @@
 	/*-------------------------------------------------------------------------
 		Compile:
 	-------------------------------------------------------------------------*/
+
+		public function setReady($ready){
+			self::$ready = $ready;
+		}
 		
 		public function compile($entry) {
 			self::$ready = false;
@@ -391,9 +395,7 @@
 			//Fetch any dependent datasources. These can be used to build the urls in xpath
 			$datasources = explode(',',$this->get('datasources'));
 			
-			$dom = $this->_driver->getDom($entry,$datasources);
-			
-			self::$ready = true;
+			$dom = $this->_driver->getDom($entry,$datasources,$this->get('id'));
 			
 			$value = $this->getExpression($dom, 'expression');
 			$label = $this->getExpression($dom, 'anchor_label');
