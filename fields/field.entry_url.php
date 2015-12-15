@@ -183,6 +183,12 @@
 			$wrapper->appendChild($label);
 			
 			$label = Widget::Label();
+			$input = Widget::Input("fields[{$order}][sync]", 'yes', 'checkbox');
+			if ($this->get('sync') == 'yes') $input->setAttribute('checked', 'checked');
+			$label->setValue($input->generate() . ' ' . __('Sync handle when it matches source (keeps handle same as source unless manually edited)'));
+			$wrapper->appendChild($label);
+			
+			$label = Widget::Label();
 			$input = Widget::Input("fields[{$order}][hide]", 'yes', 'checkbox');
 			if ($this->get('hide') == 'yes') $input->setAttribute('checked', 'checked');
 			$label->setValue($input->generate() . ' ' . __('Hide this field on publish page'));
@@ -252,7 +258,7 @@
 					$urlContents = $this->strbefore($url, $handle);
 
 					// show handle in editable field
-					$urlContents .= "<span contentEditable='true' class='url-entry-handle' data-source='{$this->get('handle_source')}' data-length='{$this->get('handle_length')}'>{$handle}</span>";
+					$urlContents .= "<span contentEditable='true' class='url-entry-handle' data-source='{$this->get('handle_source')}' data-length='{$this->get('handle_length')}' data-sync='{$this->get('sync')}'>{$handle}</span>";
 
 					// show whatever is after
 					$urlContents .= $this->strafter($url, $handle);
