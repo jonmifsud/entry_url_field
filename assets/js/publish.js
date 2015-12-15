@@ -22,7 +22,7 @@
 		return str;
 	}
 
-	jQuery(document).ready(function () {
+	$(document).ready(function () {
 
 		var $handleContainer = $('.url-entry-handle');
 		var source = $('*[name="fields[' + $handleContainer.data('source') + ']"]');
@@ -90,6 +90,9 @@
 			syncHandle();
 			setPrefix();
 			setPostfix();
+		} else if ($handleContainer.data('sync') && $handleContainer.text() == string_to_slug(source.val()).substring(0,$handleContainer.data('length'))){
+			//if has sync enabled and the text matches the source field
+			syncHandle();
 		} else {
 			$handleContainer.parent().append('<i class="fa fa-refresh" style="color:#111;margin-left:5px;cursor:pointer;"></i>');
 		}

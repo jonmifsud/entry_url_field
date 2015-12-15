@@ -32,6 +32,9 @@
 					Symphony::Database()->query("ALTER TABLE `{$entries_table}` ADD COLUMN `handle` VARCHAR(255) DEFAULT NULL");
 				}
 			}
+			if( version_compare($prev_version, '2.2.0', '<') ){
+				Symphony::Database()->query("ALTER TABLE `tbl_fields_entry_url` ADD COLUMN `sync` ENUM('yes', 'no') DEFAULT 'no'");
+			}
 
 			return true;
 		}
@@ -48,6 +51,7 @@
 					`handle_source` VARCHAR(255) DEFAULT NULL,
 					`handle_length` TINYINT(3) UNSIGNED DEFAULT 255,
 					`hide` ENUM('yes', 'no') DEFAULT 'no',
+  					`sync` ENUM('yes', 'no') DEFAULT 'no',
 					PRIMARY KEY (`id`),
 					KEY `field_id` (`field_id`)
 				)
