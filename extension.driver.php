@@ -142,11 +142,13 @@
 	            'http-host' => HTTP_HOST
 	        );
 
-			foreach ($datasources as $dsName) {
-				$ds = DatasourceManager::create($dsName, $params);
-				$arr = array();
-				$dsXml = $ds->execute($arr); 
-				$xml->appendChild($dsXml);
+			if ($datasources){
+				foreach ($datasources as $dsName) {
+					$ds = DatasourceManager::create($dsName, $params);
+					$arr = array();
+					$dsXml = $ds->execute($arr); 
+					$xml->appendChild($dsXml);
+				}
 			}
 
 			//in case there are url params they will also be added in the xml

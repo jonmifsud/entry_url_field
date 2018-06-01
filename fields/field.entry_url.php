@@ -399,8 +399,13 @@
 			self::$ready = false;
 
 			//Fetch any dependent datasources. These can be used to build the urls in xpath
-			$datasources = explode(',',$this->get('datasources'));
+			if (!empty($this->get('datasources'))){
+				$datasources = explode(',',$this->get('datasources'));
+			} else {
+				$datasources = array();
+			}
 			
+
 			$dom = $this->_driver->getDom($entry,$datasources,$this->get('id'));
 			
 			$value = $this->getExpression($dom, 'expression');
