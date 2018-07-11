@@ -8,7 +8,7 @@
 			Symphony::Database()->query("DROP TABLE `tbl_fields_entry_url`");
 		}
 
-		public function update($prev_version){
+		public function update($previousVersion = false){
 			if( version_compare($prev_version, '1.3.0', '<') ){
 				$fields = Symphony::Database()->fetch("SELECT `field_id`,`anchor_label` FROM `tbl_fields_entry_url`");
 
@@ -142,11 +142,13 @@
 	            'http-host' => HTTP_HOST
 	        );
 
-			foreach ($datasources as $dsName) {
-				$ds = DatasourceManager::create($dsName, $params);
-				$arr = array();
-				$dsXml = $ds->execute($arr); 
-				$xml->appendChild($dsXml);
+			if ($datasources){
+				foreach ($datasources as $dsName) {
+					$ds = DatasourceManager::create($dsName, $params);
+					$arr = array();
+					$dsXml = $ds->execute($arr); 
+					$xml->appendChild($dsXml);
+				}
 			}
 
 			//in case there are url params they will also be added in the xml
