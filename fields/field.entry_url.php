@@ -313,7 +313,7 @@
 			$result =  array('label' => null, 'value' => null);
 
 			if ($data['handle']){
-				$result['handle'] = General::createHandle($data['handle'],$this->get('handle_length'));
+				$result['handle'] = Lang::createHandle($data['handle'],$this->get('handle_length'));
 			}
 			
 			return $result;
