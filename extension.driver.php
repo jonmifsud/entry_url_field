@@ -203,7 +203,7 @@
 			// Only load on /publish/.../new/ OR /publish/.../edit/
 			if (in_array($page->_context['page'], array('new', 'edit'))) {
 				$page->addScriptToHead($assets_path . '/js/publish.js', $LOAD_NUMBER++);
-				$page->addStylesheetToHead('http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css');
+				$page->addStylesheetToHead('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css');
 			}
 			
 		}
