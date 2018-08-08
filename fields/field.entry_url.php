@@ -349,7 +349,6 @@
 	-------------------------------------------------------------------------*/
 		
 		public function appendFormattedElement(XMLElement &$wrapper, $data, $encode = false, $mode = null, $entry_id = null) {
-			if (!self::$ready) return;
 
 			//handle might still be required to generate the full url
 			$element = new XMLElement($this->get('element_name'));
